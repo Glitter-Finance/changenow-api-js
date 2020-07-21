@@ -1,6 +1,27 @@
 (function() {
   const API_URL = 'https://changenow.io/api/v1/';
 
+  class ApiError extends Error {
+    constructor({ error, message = '' }, status = '') {
+      super();
+      this.message = `${error}, message: ${message}`;
+      this.status = status;
+    }
+  }
+
+  const apiCall = async (url, params) => {
+    try {
+      const res = await fetch(url, params);
+      const responseData = await res.json();
+      if (!res.ok) {
+        const apiError = new ApiError(responseData, res.status);
+        throw apiError;
+      }
+      return responseData;
+    } catch (error) {
+      throw error;
+    }
+  };
 
   async function apiGet(url, params = {}) {
     const searchParams = new URLSearchParams('');
@@ -11,20 +32,18 @@
     });
   
     const requsetUrl = `${url}?${searchParams.toString()}`;
-    const res = await fetch(requsetUrl, { method: 'GET' });
-    const data = await res.json()
+    const data = await apiCall(requsetUrl, { method: 'GET' });
     return data;
   }
   
   async function apiPost(url, body = {}) {
-    const res = await fetch(url, {
+    const data = await apiCall(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json;charset=utf-8'
       },
       body: JSON.stringify(body)
     });
-    const data = await res.json()
     return data;
   }
   
@@ -54,8 +73,8 @@
       return res;
     },
     'LIST_OF_TRANSACTIONS': async function getTxLsit(params, callback) {
-      const { apiKey, from, to, status, limit = 10, offset = 0 } = params;
-      const queryParams = { from, to, status, limit, offset };
+      const { apiKey = '', from, to, status, limit = 10, offset = 0, dateFrom = '', dateTo = '' } = params;
+      const queryParams = { from, to, status, limit, offset, dateFrom, dateTo };
       const url = `${API_URL}transactions/${apiKey}`;
       const res = await apiGet(url, { ...queryParams});
       if (!!callback && typeof callback === 'function') {
@@ -63,7 +82,7 @@
       }
       return res;
     },
-    'TX_STATUS': async function getTxStatus({ id, apiKey }, callback) {
+    'TX_STATUS': async function getTxStatus({ id, apiKey = '' }, callback) {
       const url = `${API_URL}transactions/${id}/${apiKey}`;
       const res = await apiGet(url);
       if (!!callback && typeof callback === 'function') {
@@ -72,7 +91,7 @@
       return res;
     },
     'ESTIMATED': async function getEstimated(params, callback) {
-      const { apiKey, from, to, amount, fixedRate} = params;
+      const { apiKey = '', from, to, amount, fixedRate} = params;
       const fromTo = `${String(from).toLowerCase()}_${String(to).toLowerCase()}`;
       const url = `${API_URL}exchange-amount`;
       const urlParams =  `${fixedRate === true ? '/fixed-rate' : ''}/${amount}/${fromTo}`;
@@ -85,7 +104,7 @@
     },
     'CREATE_TX': async function createTx(params, callback) {
       const { 
-        apiKey, from, to, address, amount, extraId, refundAddress, refundExtraId, userId, payload, contactEmail, fixedRate
+        apiKey = '', from, to, address, amount, extraId, refundAddress, refundExtraId, userId, payload, contactEmail, fixedRate
       } = params;
       const url = `${API_URL}transactions`;
       const urlParams =  `${fixedRate === true ? '/fixed-rate' : ''}/${apiKey}`;
@@ -116,7 +135,7 @@
       }
       return res;
     },
-    'FIXED_RATE_PAIRS': async function getFixedRatePairs({ apiKey }, callback) {
+    'FIXED_RATE_PAIRS': async function getFixedRatePairs({ apiKey = '' }, callback) {
       const url = `${API_URL}/market-info/fixed-rate/${apiKey}`;
       const res = await apiGet(url);
       if (!!callback && typeof callback === 'function') {
@@ -154,5 +173,3 @@
   
   main();
 }());
-
-
